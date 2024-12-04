@@ -1,0 +1,608 @@
+# ================================KMEANS================================
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Step 1: Data points
+data = np.array([
+    [1, 2], [1.5, 1.8], [5, 8], [8, 8],
+    [1, 0.6], [9, 11], [8, 2], [10, 2],
+    [9, 3],[4,1],[1,4],[5,6],[1.9,3.5]
+])
+
+
+# Generate random 2D points
+# data = np.random.rand(1000, 2)
+
+# print(points)
+
+# Step 2: Initialize centroids (pick 2 random points from data)
+k = 3  # Number of clusters
+print("Initial Centroid:")
+centroids = data[:k]  # Use the first k points as centroids
+print(centroids)
+# for point in data:
+#     distances = [np.linalg.norm(point - centroid)  for centroid in centroids]
+#     print(distances)
+
+# Step 3: Repeat clustering steps
+for _ in range(4):  # Run for 5 iterations (fixed for simplicity)
+    # Step 3.1: Assign points to nearest centroid
+    clusters = []
+    print("Epoch "+str(_+1))
+    for point in data:
+        
+        distances = [np.linalg.norm(point - centroid) for centroid in centroids]
+        cluster = np.argmin(distances)
+        # print(distances,cluster)
+        
+        clusters.append(cluster)
+    clusters = np.array(clusters)
+    # print(clusters)
+    # Step 3.2: Update centroids (mean of points in each cluster)
+    for i in range(k):
+        # print(clusters==i)
+        points_in_cluster = data[clusters == i]
+        # print("For Cluster "+str(i))
+        # print(points_in_cluster)
+        if len(points_in_cluster) > 0:
+            centroids[i] = np.mean(points_in_cluster, axis=0)
+    print(centroids)
+
+# Step 4: Plot the results
+colors = ['r', 'g','b','y']
+for i in range(k):
+    points_in_cluster = data[clusters == i]
+    plt.scatter(points_in_cluster[:, 0], points_in_cluster[:, 1], color=colors[i], label=f'Cluster {i}')
+plt.scatter(centroids[:, 0], centroids[:, 1], s=200, marker='X', c='black', label='Centroids')
+plt.legend()
+plt.title('Simplified K-Means Clustering')
+plt.show()
+
+# ====================== KNN ALGO===================================
+
+import numpy as np
+from collections import Counter
+
+# Step 1: Define the dataset
+# Features (x, y coordinates) and their corresponding labels
+data = np.array([
+    [1, 2, 0],  # Class 0
+    [2, 3, 0],
+    [3, 3, 1],  # Class 1
+    [6, 5, 1],
+    [7, 8, 1]
+])
+X_train = data[:, :2]  # Features (x, y coordinates)
+y_train = data[:, 2]   # Labels (0 or 1)
+
+# Step 2: Define a function for Euclidean distance
+# def calculate_distance(point1, point2):
+#     return np.linalg.norm(point1-point2)
+#     # return np.sqrt(np.sum((point1 - point2) ** 2))
+
+# Step 3: Implement the KNN algorithm
+def knn_predict(X_train, y_train, test_point, k):
+    # Step 3.1: Calculate distances from the test point to all training points
+    distances = [np.linalg.norm(test_point-x) for x in X_train]
+    
+    # Step 3.2: Sort distances and get indices of k nearest neighbors
+    k_nearest_indices = np.argsort(distances)[:k]
+    print(k_nearest_indices)
+    
+    # Step 3.3: Get labels of the k nearest neighbors
+    k_nearest_labels = [y_train[i] for i in k_nearest_indices]
+    print(k_nearest_labels)
+    
+    # Step 3.4: Return the most common label (majority voting)
+    print('print(Counter(k_nearest_labels))')
+    print(Counter(k_nearest_labels))
+    print()
+
+    print('print(Counter(k_nearest_labels).most_common(1))')
+    print(Counter(k_nearest_labels).most_common(1))
+    print()
+
+    
+    most_common_label = Counter(k_nearest_labels).most_common(1)[0][0]
+    
+    return most_common_label
+
+# Step 4: Test the KNN algorithm
+test_point = np.array([4, 4])  # Test point to classify
+k = 3  # Number of neighbors
+predicted_label = knn_predict(X_train, y_train, test_point, k)
+
+print(f"The test point {test_point} belongs to class {predicted_label}.")
+
+# ======================================SUPPORT VECTOR MACHINE=============================================
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_blobs
+
+class SVM:
+    def __init__(self, learning_rate=0.001, lambda_param=0.01, n_iters=1000):
+        self.learning_rate = learning_rate
+        self.lambda_param = lambda_param  # Regularization parameter
+        self.n_iters = n_iters
+        self.w = None
+        self.b = None
+        self.support_vectors = {'+1': [], '-1': []}  # Separate support vectors for each class
+
+    def fit(self, X, y):
+        # Ensure labels are -1 or 1
+        y = np.where(y <= 0, -1, 1)
+        
+        n_samples, n_features = X.shape
+        # Initialize weights and bias
+        self.w = np.zeros(n_features)
+        self.b = 0
+
+        # Gradient Descent
+        for _ in range(self.n_iters):
+            for idx, x_i in enumerate(X):
+                condition = y[idx] * (np.dot(x_i, self.w) + self.b) >= 1
+                if condition:
+                    # Correct classification, apply only regularization
+                    dw = 2 * self.lambda_param * self.w
+                    db = 0
+                else:
+                    # Misclassification, apply hinge loss gradient
+                    dw = 2 * self.lambda_param * self.w - np.dot(x_i, y[idx])
+                    db = y[idx]
+                    # Add to support vectors
+                    if y[idx] == 1:
+                        self.support_vectors['+1'].append(x_i)  # For class +1
+                    else:
+                        self.support_vectors['-1'].append(x_i)  # For class -1
+
+                # Update weights and bias
+                self.w -= self.learning_rate * dw
+                self.b -= self.learning_rate * db
+
+        # After training, filter out the support vectors from the whole dataset
+        self.support_vectors['+1'] = [x_i for idx, x_i in enumerate(X)
+                                      if y[idx] == 1 and y[idx] * (np.dot(x_i, self.w) + self.b) <= 1]
+        self.support_vectors['-1'] = [x_i for idx, x_i in enumerate(X)
+                                      if y[idx] == -1 and y[idx] * (np.dot(x_i, self.w) + self.b) <= 1]
+
+    def predict(self, X):
+        # Predict using the linear decision boundary
+        linear_output = np.dot(X, self.w) + self.b
+        return np.sign(linear_output)
+
+# Example Usage
+if __name__ == "__main__":
+    # Create a binary classification dataset
+    X, y = make_blobs(n_samples=100, centers=2, random_state=6)
+    y = np.where(y == 0, -1, 1)  # Convert labels to -1 and 1
+
+    # Train SVM
+    svm = SVM(learning_rate=0.001, lambda_param=0.01, n_iters=1000)
+    svm.fit(X, y)
+    predictions = svm.predict(X)
+
+    # Plot results
+    def plot_decision_boundary(X, y, model):
+        x0 = np.min(X[:, 0])
+        x1 = np.max(X[:, 0])
+        x_plot = np.linspace(x0, x1, 100)
+        y_plot = -(model.w[0] * x_plot + model.b) / model.w[1]
+
+        plt.scatter(X[:, 0], X[:, 1], c=y, cmap='coolwarm')
+        plt.plot(x_plot, y_plot, '-k', label="Decision Boundary")
+
+        # Convert lists of support vectors to numpy arrays
+        support_vectors_class_1 = np.array(model.support_vectors['+1'])
+        support_vectors_class_2 = np.array(model.support_vectors['-1'])
+
+        # Check if there are any support vectors before plotting
+        if len(support_vectors_class_1) > 0:
+            plt.scatter(support_vectors_class_1[:, 0], support_vectors_class_1[:, 1], color='red', marker='x', label='Support Vectors Class +1')
+        if len(support_vectors_class_2) > 0:
+            plt.scatter(support_vectors_class_2[:, 0], support_vectors_class_2[:, 1], color='blue', marker='x', label='Support Vectors Class -1')
+
+        plt.title("SVM Decision Boundary with Support Vectors")
+        plt.legend()
+        plt.show()
+
+    plot_decision_boundary(X, y, svm)
+
+# ================================DECISION TREE===================================
+
+import numpy as np
+import pandas as pd
+
+# Sample Play Golf dataset
+data = {
+    'Outlook': ['Sunny', 'Sunny', 'Overcast', 'Rain', 'Rain', 'Rain', 'Overcast', 'Sunny', 'Sunny', 'Rain', 'Sunny', 'Overcast', 'Overcast', 'Rain'],
+    'Temperature': ['Hot', 'Hot', 'Hot', 'Mild', 'Mild', 'Cool', 'Cool', 'Mild', 'Cool', 'Mild', 'Mild', 'Mild', 'Hot', 'Mild'],
+    'Humidity': ['High', 'High', 'High', 'High', 'Low', 'Low', 'Low', 'High', 'Low', 'Low', 'High', 'Low', 'Low', 'High'],
+    'Wind': ['Weak', 'Weak', 'Weak', 'Weak', 'Weak', 'Strong', 'Strong', 'Weak', 'Strong', 'Strong', 'Weak', 'Strong', 'Strong', 'Weak'],
+    'Play Golf': ['No', 'No', 'Yes', 'Yes', 'Yes', 'No', 'Yes', 'Yes', 'Yes', 'No', 'Yes', 'Yes', 'Yes', 'No']
+}
+
+# Convert to DataFrame
+df = pd.DataFrame(data)
+print(pd.factorize(df['Outlook']))
+# Convert categorical data to numeric using encoding
+def encode_data(df):
+    for column in df.columns:
+        if df[column].dtype == 'object':
+            df[column] = pd.factorize(df[column])[0]
+    return df
+
+# Encode the dataset
+df_encoded = encode_data(df)
+print(df_encoded)
+
+# Split the dataset into features and target
+X=df_encoded.iloc[:,:-1]
+y=df_encoded.iloc[:,-1]
+
+# Gini Impurity Calculation
+def gini_impurity(y):
+    classes, counts = np.unique(y, return_counts=True)
+    prob = counts / len(y)
+    return 1 - np.sum(prob ** 2)
+
+# Information Gain Calculation (Gini-based)
+def information_gain(X_column, y):
+    # Calculate Gini of the current set
+    gini_before = gini_impurity(y)
+    
+    # Calculate Gini after split
+    unique_values = np.unique(X_column)
+    gini_after = 0
+    for value in unique_values:
+        y_split = y[X_column == value]
+        gini_after += (len(y_split) / len(X_column)) * gini_impurity(y_split)
+    
+    # Information gain is the reduction in Gini impurity
+    return gini_before - gini_after
+
+# Best Split Function
+def best_split(X, y):
+    best_gain = -1
+    best_column = None
+
+    for column in X.columns:
+        gain = information_gain(X[column], y)
+        if gain > best_gain:
+            best_gain = gain
+            best_column = column
+
+    return best_column
+
+# Recursive Tree Construction
+class DecisionTree:
+    def __init__(self, max_depth=None):
+        self.max_depth = max_depth
+        self.tree = None
+    
+    def fit(self, X, y, depth=0):
+        if len(np.unique(y)) == 1:  # All labels are the same
+            return {'label': y.iloc[0]}
+        
+        if self.max_depth and depth >= self.max_depth:
+            return {'label': y.mode()[0]}
+        
+        # Find the best split
+        best_column = best_split(X, y)
+        
+        if best_column is None:  # If no valid split, return majority class
+            return {'label': y.mode()[0]}
+        
+        # Create the tree recursively for the splits
+        tree = {'column': best_column}
+        tree['left'] = self.fit(X[X[best_column] == 0], y[X[best_column] == 0], depth + 1)  # Left split (0)
+        tree['right'] = self.fit(X[X[best_column] == 1], y[X[best_column] == 1], depth + 1)  # Right split (1)
+        
+        return tree
+    
+    def predict(self, X):
+        return np.array([self._predict_single(x, self.tree) for _, x in X.iterrows()])
+    
+    def _predict_single(self, x, tree):
+        if 'label' in tree:
+            return tree['label']
+        
+        if x[tree['column']] == 0:
+            return self._predict_single(x, tree['left'])
+        else:
+            return self._predict_single(x, tree['right'])
+
+# Initialize and train the Decision Tree
+dt = DecisionTree(max_depth=3)
+dt.tree = dt.fit(X, y)
+
+# Make predictions on the same dataset
+predictions = dt.predict(X)
+
+# Convert predictions back to original labels (0 -> No, 1 -> Yes)
+predictions = ['Yes' if pred == 1 else 'No' for pred in predictions]
+
+# Print the predictions
+print("Predictions:", predictions)
+
+# Evaluate accuracy
+accuracy = np.mean(predictions == y.map({0: 'No', 1: 'Yes'}))
+print(f"Accuracy: {accuracy * 100:.2f}%")
+
+# =================================LINEAR REGRESSION FROM SCRATCH WITH MULTIPLE FEATURES=====================================
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+class LinearRegressionMulti:
+    def __init__(self):
+        self.weights = None  # Weight vector (one for each feature)
+        self.bias = 0        # Bias (intercept)
+
+    def fit(self, X, y, learning_rate=0.01, n_iters=1000):
+        n_samples, n_features = X.shape
+        # Initialize weights and bias
+        self.weights = np.zeros(n_features)
+        self.bias = 0
+
+        # Gradient Descent
+        for _ in range(n_iters):
+            # Predictions
+            y_pred = np.dot(X, self.weights) + self.bias
+
+            # Gradients (Mean Squared Error Loss)
+            dw = -(2 / n_samples) * np.dot(X.T, (y - y_pred))
+            db = -(2 / n_samples) * np.sum(y - y_pred)
+
+            # Update weights and bias
+            self.weights -= learning_rate * dw
+            self.bias -= learning_rate * db
+
+    def predict(self, X):
+        return np.dot(X, self.weights) + self.bias
+
+
+# Example Usage
+if __name__ == "__main__":
+    # Sample dataset (2 features)
+    # X: Feature matrix, y: Target variable
+    X = np.array([
+        [1, 1],
+        [2, 3],
+        [4, 2],
+        [3, 5],
+        [5, 4]
+    ])  # Shape: (5, 2)
+    y = np.array([5, 8, 10, 12, 15])  # Shape: (5,)
+
+    # Initialize and train the model
+    model = LinearRegressionMulti()
+    model.fit(X, y, learning_rate=0.01, n_iters=1000)
+
+    # Predictions
+    y_pred = model.predict(X)
+
+    # Print the learned parameters
+    print(f"Weights (coefficients): {model.weights}")
+    print(f"Bias (intercept): {model.bias:.2f}")
+
+    # Plot the predictions vs actual values
+    plt.scatter(range(len(y)), y, color="blue", label="Actual values")
+    plt.scatter(range(len(y_pred)), y_pred, color="red", label="Predicted values")
+    plt.title("Linear Regression (Multiple Features)")
+    plt.xlabel("Sample Index")
+    plt.ylabel("Target Value")
+    plt.legend()
+    plt.show()
+
+# ===============================================================LOGISTIC REGRESSION WITH MULTIPLE FEATURES==================
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+class LogisticRegression:
+    def __init__(self, learning_rate=0.01, n_iters=1000):
+        self.weights = None  # Weights for features
+        self.bias = 0        # Bias (intercept)
+        self.learning_rate = learning_rate
+        self.n_iters = n_iters
+
+    def sigmoid(self, z):
+        # Sigmoid activation function
+        return 1 / (1 + np.exp(-z))
+
+    def fit(self, X, y):
+        n_samples, n_features = X.shape
+        # Initialize weights and bias
+        self.weights = np.zeros(n_features)
+        self.bias = 0
+
+        # Gradient Descent
+        for _ in range(self.n_iters):
+            # Linear model
+            linear_model = np.dot(X, self.weights) + self.bias
+            # Apply sigmoid
+            y_pred = self.sigmoid(linear_model)
+
+            # Gradients (Binary Cross-Entropy Loss)
+            dw = (1 / n_samples) * np.dot(X.T, (y_pred - y))
+            db = (1 / n_samples) * np.sum(y_pred - y)
+
+            # Update weights and bias
+            self.weights -= self.learning_rate * dw
+            self.bias -= self.learning_rate * db
+
+    def predict(self, X):
+        # Predict probabilities
+        linear_model = np.dot(X, self.weights) + self.bias
+        y_pred = self.sigmoid(linear_model)
+        # Convert probabilities to binary output (0 or 1)
+        return np.where(y_pred >= 0.5, 1, 0)
+
+# Example Usage
+if __name__ == "__main__":
+    # Sample dataset (2 features)
+    X = np.array([
+        [2, 3],
+        [1, 2],
+        [4, 5],
+        [5, 6],
+        [3, 3],
+        [6, 7]
+    ])  # Shape: (6, 2)
+
+    y = np.array([0, 0, 1, 1, 0, 1])  # Binary labels (0 or 1)
+
+    # Initialize and train the Logistic Regression model
+    model = LogisticRegression(learning_rate=0.01, n_iters=1000)
+    model.fit(X, y)
+
+    # Predictions
+    predictions = model.predict(X)
+
+    # Print the learned parameters and predictions
+    print(f"Weights: {model.weights}")
+    print(f"Bias: {model.bias}")
+    print(f"Predictions: {predictions}")
+
+    # Plotting (only works for 2D data for simplicity)
+    plt.scatter(X[:, 0], X[:, 1], c=y, cmap='viridis', label="Data points (True labels)")
+    for i, pred in enumerate(predictions):
+        plt.text(X[i, 0], X[i, 1], f"{pred}", color="red")
+    plt.title("Logistic Regression Predictions")
+    plt.xlabel("Feature 1")
+    plt.ylabel("Feature 2")
+    plt.legend()
+    plt.show()
+# =================================PCA FROM SCRATCH============================================================
+
+import numpy as np
+import pandas as pd
+from sklearn.datasets import load_iris
+import matplotlib.pyplot as plt
+
+# Step 1: Load the data
+data = load_iris()
+X = data.data  # Features
+y = data.target  # Target labels (species)
+
+# Step 2: Standardize the data (zero mean, unit variance)
+X_mean = np.mean(X, axis=0)
+X_std = np.std(X, axis=0)
+X_standardized = (X - X_mean) / X_std
+
+# Step 3: Calculate the covariance matrix from scratch
+n_samples = X.shape[0]
+
+# Manually calculating covariance matrix as 1/(n-1) * (X.T @ X)
+covariance_matrix_scratch = (X_standardized.T @ X_standardized) / (n_samples - 1)
+
+# Step 4: Compute the eigenvalues and eigenvectors from the covariance matrix
+eigenvalues, eigenvectors = np.linalg.eig(covariance_matrix_scratch)
+
+# Step 5: Sort the eigenvalues and eigenvectors in descending order
+sorted_indices = np.argsort(eigenvalues)[::-1]  # Descending sort
+sorted_eigenvalues = eigenvalues[sorted_indices]
+sorted_eigenvectors = eigenvectors[:, sorted_indices]
+
+# Step 6: Select the top n_components (we choose 2 for 2D PCA visualization)
+n_components = 2
+top_eigenvectors = sorted_eigenvectors[:, :n_components]
+
+# Step 7: Transform the data using the top principal components
+X_pca = X_standardized @ top_eigenvectors
+
+print(X_pca.shape)
+
+# Step 8: Plot the PCA results with improved style
+plt.figure(figsize=(20, 10))
+
+# Using different marker style, transparency, and grid
+# scatter = plt.scatter(X_pca[:, 0], X_pca[:, 1],c=y)
+species_labels = ['Setosa', 'Versicolor', 'Virginica']
+scatter = plt.scatter(X_pca[:, 0], X_pca[:, 1],c=y)
+
+colors = ['purple', 'green', 'yellow']  # Colors based on 'viridis' cmap (adjust if needed)
+for i, species in enumerate(species_labels):
+    plt.scatter([], [], c=colors[i], label=species)  # Empty scatter for custom legend
+plt.legend(title="Species")
+
+
+plt.title('PCA of Iris Dataset')
+plt.xlabel(f'Principal Component 1 (Explained Variance: {sorted_eigenvalues[0]:.2f})')
+plt.ylabel(f'Principal Component 2 (Explained Variance: {sorted_eigenvalues[1]:.2f})')
+
+# Show plot
+plt.show()
+
+
+# ======================================SVD FROM SCRATCH===========================================
+
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+def svd_from_scratch(A):
+    # Step 1: Compute A.T * A for eigenvalue decomposition
+    AT_A = A.T @ A
+
+    # Step 2: Perform eigenvalue decomposition on A.T * A
+    eigvals_V, V = np.linalg.eig(AT_A)
+
+    # Step 3: Sort the eigenvalues and corresponding eigenvectors in descending order
+    sorted_indices = np.argsort(eigvals_V)[::-1]
+    eigvals_V = eigvals_V[sorted_indices]
+    V = V[:, sorted_indices]
+    
+
+    # Step 4: Compute Sigma as the square root of the sorted eigenvalues
+    sigma = np.sqrt(eigvals_V)
+
+    # Step 5: Compute U using the formula U = A * V / sigma
+    U = (A @ V) / sigma
+
+    # Step 6: Return U, Sigma, and V.T
+    return U, np.diag(sigma), V.T
+{
+ "cells": [],
+ "metadata": {},
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
+
+def svd_image(image_path, k=50):
+    # Load image as grayscale
+    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    A = np.array(img, dtype=float)
+
+    # Step 1: Perform SVD from scratch
+    U, Sigma, Vt = svd_from_scratch(A)
+
+    # Step 2: Truncate matrices to keep top k singular values
+    U_k = U[:, :k]  # Top k columns of U
+    Sigma_k = Sigma[:k, :k]  # Top k singular values
+    Vt_k = Vt[:k, :]  # Top k rows of Vt
+
+    # Step 3: Reconstruct the image using the truncated SVD
+    # A_reconstructed = np.dot(U_k, np.dot(Sigma_k, Vt_k))
+    A_reconstructed = U_k @ Sigma_k @ Vt_k
+
+    # Step 4: Plot original and reconstructed image
+    plt.figure(figsize=(20, 10))
+
+    # Plot original image
+    plt.subplot(1, 2, 1)
+    plt.imshow(A,cmap='gray')
+    plt.title('Original Image')
+    plt.axis('off')
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(A_reconstructed, cmap='gray')
+    plt.title(f'Reconstructed Image (k={k})')
+    plt.axis('off')
+
+    plt.show()
+
+# Example usage
+image_path = 'hero.jpg'  # Replace with the path to your image
+svd_image(image_path, k=10)  # Using top 10 singular values for reconstruction
